@@ -1,7 +1,5 @@
 # tools
 
-Small, free, open-source tools by Yasser Jamal.
-
 | Tool | What it is | Try it |
 | --- | --- | --- |
 | [MoodPad](moodpad/) | A free-writing pad whose characters and sounds react to how you type. | [yasserjamal.com/moodpad](https://yasserjamal.com/moodpad) |
