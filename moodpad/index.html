@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoodPad</title>
+<style>
+  :root {
+    --bg: #edf3ec; --accent: #2a7447; --tint: #d0e4d4;
+    --ink: #1f1d1a; --muted: #4a4741; --line: rgba(31, 29, 26, 0.2);
+    --ui: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: Newsreader, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--ui); transition: background .5s; }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* header */
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 20px 40px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); transition: background .5s; }
+  #title { flex: 1 1 200px; min-width: 0; min-height: 44px; border: 1px solid transparent; border-radius: 10px; background: transparent;
+           padding: 0 12px; font-size: 16px; font-weight: 500; color: var(--ink); }
+  #title:hover { border-color: var(--line); }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .btn { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.7); color: var(--ink); font-size: 14px; font-weight: 500; }
+  .btn.ghost { background: transparent; font-weight: 400; }
+  .btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .vol { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: #3b3833; }
+  .vol input { width: 110px; accent-color: var(--accent); }
+  .seg { display: flex; padding: 3px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.7); }
+  .seg button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; font-weight: 500; }
+  #packNote { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+  #packNote:empty { display: none; }
+
+  /* body */
+  main { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 56px; padding: 32px 40px 96px; }
+  .writing { flex: 1 1 520px; max-width: 660px; min-width: 0; }
+  #doc { display: block; width: 100%; min-height: 60vh; border: 0; outline: none; resize: none; overflow: hidden; padding: 0;
+         background: transparent; color: var(--ink); caret-color: var(--accent);
+         font: 21px/1.75 var(--serif); }
+  #doc::placeholder { color: #6b675f; }
+  #doc:focus-visible { outline: none; }
+
+  /* companion */
+  .companion { flex: 0 0 280px; max-width: 280px; position: sticky; top: 24px; padding: 24px; border-radius: 24px; background: #fff;
+               border: 1px solid rgba(31,29,26,.1); box-shadow: 0 1px 2px rgba(31,29,26,.06); }
+  .now { display: flex; align-items: center; gap: 16px; }
+  .portrait { width: 96px; height: 96px; flex: none; border-radius: 28px; background: var(--tint); color: var(--accent);
+              display: flex; align-items: center; justify-content: center; transition: background .5s, color .5s; }
+  .portrait svg { width: 72px; height: 72px; }
+  .portrait.pop svg { animation: pop .5s ease-out; }
+  @keyframes pop { 0% { transform: scale(.55) rotate(-14deg); } 60% { transform: scale(1.18) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
+  @media (prefers-reduced-motion: reduce) { .portrait.pop svg { animation: none; } body { transition: none; } }
+  #name { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  #why { margin-top: 2px; font-size: 14px; color: var(--muted); }
+  .rule { margin: 22px 0 14px; height: 1px; background: rgba(31,29,26,.1); }
+  .cast-label { margin-bottom: 12px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .cast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .tile { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: #3b3833; }
+  .tile .face { width: 100%; aspect-ratio: 1; border-radius: 18px; display: flex; align-items: center; justify-content: center; transition: box-shadow .3s; }
+  .tile svg { width: 40px; height: 40px; }
+
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; margin: 0; }
+  .stat dt { font-size: 12px; color: var(--muted); }
+  .stat dd { margin: 2px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat dd small { font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .mix-label { margin: 20px 0 8px; font-size: 12px; color: var(--muted); }
+  .mix { display: flex; height: 12px; gap: 2px; border-radius: 6px; overflow: hidden; background: rgba(31,29,26,.08); }
+  .mix span { display: block; min-width: 3px; transition: flex-grow .4s; }
+  #mixLegend { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: #3b3833; }
+  #mixLegend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+  .card-actions .btn { padding: 0 8px; }
+
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: 20px 40px; font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .companion { order: -1; position: static; flex-basis: 100%; max-width: none; }
+    .bar { padding: 14px 16px; }
+    main { padding: 8px 16px 72px; gap: 24px; }
+    footer { padding: 16px; }
+    #doc { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="s-goose" viewBox="0 0 64 64">
+    <circle cx="32" cy="34" r="22" fill="currentColor"/>
+    <circle cx="23" cy="32" r="5" fill="#fff"/><circle cx="41" cy="32" r="5" fill="#fff"/>
+    <circle cx="24" cy="33" r="2.4" fill="#1f1d1a"/><circle cx="40" cy="33" r="2.4" fill="#1f1d1a"/>
+    <path d="M15 22 L28 27" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M49 22 L36 27" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M23 43 L41 43 L32 55 Z" fill="#f2a93b"/>
+  </symbol>
+  <symbol id="s-cat" viewBox="0 0 64 64">
+    <path d="M12 26 L14 5 L30 17 Z" fill="currentColor"/><path d="M52 26 L50 5 L34 17 Z" fill="currentColor"/>
+    <circle cx="32" cy="37" r="22" fill="currentColor"/>
+    <circle cx="23" cy="34" r="5.5" fill="#fff"/><circle cx="41" cy="34" r="5.5" fill="#fff"/>
+    <rect x="22" y="29.5" width="2" height="9" rx="1" fill="#1f1d1a"/><rect x="40" y="29.5" width="2" height="9" rx="1" fill="#1f1d1a"/>
+    <path d="M28.5 42 L35.5 42 L32 46 Z" fill="#f4b3b3"/>
+    <path d="M6 40 L18 42 M6 48 L18 46 M58 40 L46 42 M58 48 L46 46" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="s-mouse" viewBox="0 0 64 64">
+    <circle cx="14" cy="18" r="11" fill="currentColor"/><circle cx="50" cy="18" r="11" fill="currentColor"/>
+    <circle cx="14" cy="18" r="5.5" fill="#f4b3b3"/><circle cx="50" cy="18" r="5.5" fill="#f4b3b3"/>
+    <circle cx="32" cy="37" r="21" fill="currentColor"/>
+    <circle cx="24" cy="33" r="5.5" fill="#fff"/><circle cx="40" cy="33" r="5.5" fill="#fff"/>
+    <circle cx="24" cy="33" r="3.6" fill="#1f1d1a"/><circle cx="40" cy="33" r="3.6" fill="#1f1d1a"/>
+    <ellipse cx="32" cy="44" rx="3.4" ry="2.8" fill="#f4b3b3"/>
+    <path d="M26 49 Q32 53 38 49" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="s-wizard" viewBox="0 0 64 64">
+    <circle cx="32" cy="42" r="16" fill="#f1d7bd"/>
+    <path d="M20 46 Q32 68 44 46 Q32 50 20 46 Z" fill="#e6e3dc"/>
+    <path d="M32 2 L51 31 L13 31 Z" fill="currentColor"/>
+    <ellipse cx="32" cy="32" rx="23" ry="5" fill="currentColor"/>
+    <circle cx="32" cy="14" r="2.2" fill="#f2c94c"/>
+    <path d="M21 41 Q25 44.5 29 41 M35 41 Q39 44.5 43 41" fill="none" stroke="#1f1d1a" stroke-width="2.2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="s-robot" viewBox="0 0 64 64">
+    <rect x="30.5" y="7" width="3" height="10" fill="currentColor"/><circle cx="32" cy="7" r="4" fill="currentColor"/>
+    <rect x="9" y="16" width="46" height="40" rx="12" fill="currentColor"/>
+    <rect x="17" y="27" width="12" height="11" rx="3.5" fill="#fff"/><rect x="35" y="27" width="12" height="11" rx="3.5" fill="#fff"/>
+    <rect x="21" y="30" width="5" height="5" rx="1.5" fill="#1f1d1a"/><rect x="38" y="30" width="5" height="5" rx="1.5" fill="#1f1d1a"/>
+    <rect x="22" y="45" width="20" height="3.5" rx="1.75" fill="#fff"/>
+  </symbol>
+  <symbol id="s-owl" viewBox="0 0 64 64">
+    <path d="M12 20 L20 6 L27 19 Z" fill="currentColor"/><path d="M52 20 L44 6 L37 19 Z" fill="currentColor"/>
+    <circle cx="32" cy="35" r="23" fill="currentColor"/>
+    <circle cx="22.5" cy="31" r="10" fill="#fff"/><circle cx="41.5" cy="31" r="10" fill="#fff"/>
+    <circle cx="23.5" cy="32" r="4.4" fill="#1f1d1a"/><circle cx="40.5" cy="32" r="4.4" fill="#1f1d1a"/>
+    <path d="M28 40 L36 40 L32 49 Z" fill="#f2a93b"/>
+  </symbol>
+</svg>
+
+<div class="shell">
+  <header class="bar">
+    <div class="brand"><span class="dot"></span>MoodPad</div>
+    <label style="display:flex;flex:1 1 200px;min-width:0">
+      <span class="sr-only">Document title</span>
+      <input id="title" type="text" value="Untitled document" spellcheck="false" style="width:100%">
+    </label>
+    <div class="controls">
+      <button id="mute" class="btn" type="button" aria-pressed="false">Mute</button>
+      <label class="vol"><span>Volume</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.6"></label>
+      <div class="seg" role="group" aria-label="Sensitivity" id="sens">
+        <button type="button" data-v="low" aria-pressed="false">Low</button>
+        <button type="button" data-v="normal" aria-pressed="true">Normal</button>
+        <button type="button" data-v="high" aria-pressed="false">High</button>
+      </div>
+      <button id="packBtn" class="btn ghost" type="button" title="Pick a folder that contains cat/, owl/, … subfolders">Custom pack</button>
+      <input id="packInput" type="file" webkitdirectory multiple hidden>
+    </div>
+    <div id="packNote" role="status"></div>
+  </header>
+
+  <main>
+    <div class="writing">
+      <label for="doc" class="sr-only">Your writing</label>
+      <textarea id="doc" placeholder="Start writing. The way you type picks the character…" autofocus spellcheck="true"></textarea>
+    </div>
+
+    <aside class="companion" aria-label="Current character">
+      <div class="now">
+        <div class="portrait" id="portrait">
+          <svg viewBox="0 0 64 64" role="img" aria-label="Robot" id="mascotSvg"><use id="mascot" href="#s-robot"></use></svg>
+        </div>
+        <div style="min-width:0" aria-live="polite">
+          <div id="name">Robot</div>
+          <div id="why">Waiting for you to type</div>
+        </div>
+      </div>
+      <div class="rule"></div>
+      <div class="cast-label">The cast</div>
+      <div class="cast" id="cast"></div>
+
+      <div class="rule"></div>
+      <div class="cast-label">This session</div>
+      <dl class="stats">
+        <div class="stat"><dt>Live speed</dt><dd><span id="sLive">0</span> <small>wpm</small></dd></div>
+        <div class="stat"><dt>Average</dt><dd><span id="sAvg">–</span> <small id="sAvgUnit"></small></dd></div>
+        <div class="stat"><dt>Backspaces</dt><dd><span id="sBack">–</span></dd></div>
+        <div class="stat"><dt>Time</dt><dd id="sTime">0:00</dd></div>
+      </dl>
+      <div class="mix-label" id="mixLabel">Mood mix</div>
+      <div class="mix" id="mix" role="img" aria-labelledby="mixLabel mixText"></div>
+      <ul id="mixLegend"></ul>
+      <span id="mixText" class="sr-only"></span>
+      <div class="card-actions">
+        <button class="btn ghost" id="copyBtn" type="button">Copy stats</button>
+        <button class="btn ghost" id="resetBtn" type="button">Reset</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span id="count">0 words</span>
+    <span>Your writing and keystroke timing stay in this browser. Nothing is sent anywhere.</span>
+  </footer>
+</div>
+
+<script src="sounds.js"></script>
+<script src="mood-engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { DEFAULT_CONFIG, scaled, MoodEngine } = window.MoodCore;
+
+  const CHARACTERS = {
+    goose:  { short: 'Goose',  name: 'Angry goose',    accent: '#b93a26', bg: '#f8e8e4', tint: '#f2d0c8' },
+    cat:    { short: 'Cat',    name: 'Distracted cat', accent: '#9a5b00', bg: '#f8eedb', tint: '#f1deb8' },
+    mouse:  { short: 'Mouse',  name: 'Panicked mouse', accent: '#7a3fc2', bg: '#f0eaf7', tint: '#dfd0f1' },
+    wizard: { short: 'Wizard', name: 'Sleepy wizard',  accent: '#2f5fc4', bg: '#e9eefa', tint: '#d0dbf3' },
+    robot:  { short: 'Robot',  name: 'Robot',          accent: '#2a7447', bg: '#edf3ec', tint: '#d0e4d4' },
+    owl:    { short: 'Owl',    name: 'Wise owl',       accent: '#7a5a43', bg: '#f3ece5', tint: '#e4d6c8' },
+  };
+  const CAST_ORDER = ['goose', 'cat', 'mouse', 'wizard', 'robot', 'owl'];
+  const PITCH_STEPS = 4; // keys vary by -4…+4 semitones
+
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode: fine */ } },
+  };
+
+  // ---------- settings
+  const state = {
+    muted: store.get('moodpad.muted', '0') === '1',
+    volume: parseFloat(store.get('moodpad.volume', '0.6')),
+    sensitivity: store.get('moodpad.sensitivity', 'normal'),
+  };
+  $('mute').setAttribute('aria-pressed', String(state.muted));
+  $('mute').textContent = state.muted ? 'Muted' : 'Mute';
+  $('volume').value = state.volume;
+  function paintSensitivity() {
+    document.querySelectorAll('#sens button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state.sensitivity)));
+  }
+  paintSensitivity();
+
+  const engine = new MoodEngine(scaled(DEFAULT_CONFIG, state.sensitivity));
+
+  // ---------- audio
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  const master = ctx.createGain();
+  master.gain.value = state.volume;
+  master.connect(ctx.destination);
+
+  // sets[mood] = { signature, keys: [], backspace, space, first }  (AudioBuffers)
+  const sets = {};
+  const lastKey = {};
+
+  function b64ToBytes(b64) {
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  function decode(arrayBuffer) {
+    return new Promise((resolve, reject) => ctx.decodeAudioData(arrayBuffer, resolve, reject));
+  }
+  async function loadBundled() {
+    const bank = window.MOODPAD_SOUNDS || {};
+    for (const mood of CAST_ORDER) {
+      const files = bank[mood] || {};
+      const set = { keys: [] };
+      for (const name of Object.keys(files).sort()) {
+        const buf = await decode(b64ToBytes(files[name]));
+        if (name.startsWith('key_')) set.keys.push(buf);
+        else if (name === 'signature' || name === 'backspace' || name === 'space' || name === 'first') set[name] = buf;
+      }
+      sets[mood] = set;
+    }
+  }
+  const ready = loadBundled();
+
+  function play(buffer, step) {
+    if (!buffer) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = Math.pow(2, (step || 0) / 12);
+    src.connect(master);
+    src.start();
+  }
+
+  function playSignature(mood) {
+    const set = sets[mood];
+    if (set) play(set.signature || set.keys[0], 0);
+  }
+  function playKey(mood, category, isBurstStart, step) {
+    const set = sets[mood];
+    if (!set) return;
+    let buffer;
+    if (isBurstStart && set.first) buffer = set.first;
+    else if (category === 'backspace' && set.backspace) buffer = set.backspace;
+    else if (category === 'space' && set.space) buffer = set.space;
+    else if (set.keys.length) {
+      let i = Math.floor(Math.random() * set.keys.length);
+      if (set.keys.length > 1 && i === lastKey[mood]) i = (i + 1) % set.keys.length;
+      lastKey[mood] = i;
+      buffer = set.keys[i];
+    }
+    play(buffer, step);
+  }
+
+  // ---------- UI
+  const tiles = {};
+  const castEl = $('cast');
+  for (const id of CAST_ORDER) {
+    const c = CHARACTERS[id];
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.innerHTML = '<div class="face" style="background:' + c.tint + ';color:' + c.accent +
+      '"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#s-' + id + '"></use></svg></div><span>' + c.short + '</span>';
+    castEl.appendChild(tile);
+    tiles[id] = tile.firstChild;
+  }
+
+  function showMood(mood, reason, switched) {
+    const c = CHARACTERS[mood];
+    const root = document.documentElement.style;
+    root.setProperty('--bg', c.bg);
+    root.setProperty('--accent', c.accent);
+    root.setProperty('--tint', c.tint);
+    $('mascot').setAttribute('href', '#s-' + mood);
+    $('mascotSvg').setAttribute('aria-label', c.name);
+    $('name').textContent = c.name;
+    $('why').textContent = reason;
+    for (const id of CAST_ORDER) tiles[id].style.boxShadow = id === mood ? '0 0 0 3px ' + CHARACTERS[id].accent : 'none';
+    document.title = c.name + ' · MoodPad';
+    if (switched) {
+      const p = $('portrait');
+      p.classList.remove('pop');
+      void p.offsetWidth;
+      p.classList.add('pop');
+    }
+  }
+  showMood('robot', engine.reason, false);
+
+  // ---------- typing
+  const IGNORED = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'FnLock', 'Dead', 'Process', 'Unidentified']);
+  const LETTER = /^\p{L}$/u;
+
+  /* PRIVACY: this is the only place a key's identity is read. We turn it into a
+   * category and a pitch offset right here and keep neither the key nor the code. */
+  function categorize(e) {
+    const key = e.key;
+    if (IGNORED.has(key) || e.ctrlKey || e.metaKey) return null; // modifiers and shortcuts aren't typing
+    let category;
+    if (key === 'Backspace' || key === 'Delete') category = 'backspace';
+    else if (key === ' ') category = 'space';
+    else if (key === 'Enter') category = 'enter';
+    else if (LETTER.test(key)) category = key !== key.toLowerCase() ? 'letterUppercase' : 'letter';
+    else category = 'other';
+    const step = (e.code.length + key.charCodeAt(0)) % (2 * PITCH_STEPS + 1) - PITCH_STEPS;
+    return { category, step };
+  }
+
+  // ---------- session stats (timing and categories only; held in memory, never saved)
+  const ACTIVE_GAP = 3; // gaps longer than this are pauses, not typing time
+  let stats;
+  function resetStats() {
+    stats = { start: null, last: null, active: 0, typed: 0, backspaces: 0, moodSeconds: {} };
+    for (const id of CAST_ORDER) stats.moodSeconds[id] = 0;
+  }
+  resetStats();
+
+  function fmtTime(sec) {
+    sec = Math.floor(sec);
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+  }
+  function moodMix() {
+    const total = CAST_ORDER.reduce((a, id) => a + stats.moodSeconds[id], 0);
+    if (total <= 0) return [];
+    return CAST_ORDER.map(id => ({ id, pct: stats.moodSeconds[id] / total * 100 }))
+      .filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct);
+  }
+  function avgWPM() {
+    return stats.active >= 5 ? Math.round(stats.typed / 5 / (stats.active / 60)) : null;
+  }
+  function paintStats() {
+    const now = performance.now() / 1000;
+    $('sLive').textContent = stats.start === null ? '0' : String(Math.round(engine.currentWPM(now)));
+    const avg = avgWPM();
+    $('sAvg').textContent = avg === null ? '–' : String(avg);
+    $('sAvgUnit').textContent = avg === null ? '' : 'wpm';
+    const keys = stats.typed + stats.backspaces;
+    $('sBack').textContent = keys < 10 ? '–' : Math.round(stats.backspaces / keys * 100) + '%';
+    $('sTime').textContent = stats.start === null ? '0:00' : fmtTime(now - stats.start);
+
+    const mix = moodMix();
+    const bar = $('mix'), legend = $('mixLegend');
+    bar.innerHTML = ''; legend.innerHTML = '';
+    for (const m of mix) {
+      const c = CHARACTERS[m.id];
+      const seg = document.createElement('span');
+      seg.style.flexGrow = String(m.pct);
+      seg.style.background = c.accent;
+      bar.appendChild(seg);
+      const li = document.createElement('li');
+      li.innerHTML = '<i style="background:' + c.accent + '"></i>' + c.short + ' ' + Math.round(m.pct) + '%';
+      legend.appendChild(li);
+    }
+    $('mixText').textContent = mix.length
+      ? mix.map(m => CHARACTERS[m.id].short + ' ' + Math.round(m.pct) + ' percent').join(', ')
+      : 'No typing yet';
+    if (!mix.length) legend.innerHTML = '<li>Start typing to see your mix</li>';
+  }
+  function recordStats(now, prevMood, category) {
+    if (stats.start === null) stats.start = now;
+    if (stats.last !== null) {
+      const gap = now - stats.last;
+      if (gap <= ACTIVE_GAP) { stats.active += gap; stats.moodSeconds[prevMood] += gap; }
+    }
+    stats.last = now;
+    if (category === 'backspace') stats.backspaces++; else stats.typed++;
+  }
+  setInterval(paintStats, 1000);
+
+  function summary() {
+    const avg = avgWPM();
+    const keys = stats.typed + stats.backspaces;
+    const words = (doc.value.trim().match(/\S+/g) || []).length;
+    const mix = moodMix().map(m => CHARACTERS[m.id].short + ' ' + Math.round(m.pct) + '%').join(', ');
+    return ['MoodPad session',
+      'Time ' + (stats.start === null ? '0:00' : fmtTime(performance.now() / 1000 - stats.start)),
+      words + ' words',
+      avg === null ? 'avg speed n/a' : avg + ' wpm avg',
+      keys < 10 ? 'backspaces n/a' : Math.round(stats.backspaces / keys * 100) + '% backspaces',
+      'Mood mix: ' + (mix || 'n/a')].join(' · ');
+  }
+  $('copyBtn').addEventListener('click', async () => {
+    const text = summary();
+    try { await navigator.clipboard.writeText(text); }
+    catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e2) { /* nothing more to try */ }
+      ta.remove();
+    }
+    const b = $('copyBtn'); b.textContent = 'Copied';
+    setTimeout(() => { b.textContent = 'Copy stats'; }, 1500);
+  });
+  $('resetBtn').addEventListener('click', () => { resetStats(); paintStats(); });
+
+  $('doc').addEventListener('keydown', e => {
+    const k = categorize(e);
+    if (!k) return;
+    if (ctx.state !== 'running') ctx.resume();
+    const now = performance.now() / 1000;
+    const prevMood = engine.mood;
+    const update = engine.record(k.category, now);
+    recordStats(now, prevMood, k.category);
+    paintStats();
+    showMood(update.mood, update.reason, update.didSwitch);
+    if (state.muted) return;
+    if (update.didSwitch) playSignature(update.mood);
+    else playKey(update.mood, k.category, update.isBurstStart, k.step);
+  });
+
+  // ---------- document niceties
+  const doc = $('doc');
+  function grow() {
+    doc.style.height = 'auto';
+    doc.style.height = Math.max(window.innerHeight * 0.6, doc.scrollHeight) + 'px';
+  }
+  function count() {
+    const words = (doc.value.trim().match(/\S+/g) || []).length;
+    const chars = doc.value.length;
+    const mins = words / 230; // average adult reading speed
+    const read = words === 0 ? '' : mins < 1 ? ' · under 1 min read' : ' · ' + Math.round(mins) + ' min read';
+    $('count').textContent = words + (words === 1 ? ' word' : ' words') + ' · ' +
+      chars.toLocaleString() + (chars === 1 ? ' character' : ' characters') + read;
+  }
+  let saveTimer;
+  doc.value = store.get('moodpad.text', '');
+  $('title').value = store.get('moodpad.title', 'Untitled document');
+  doc.addEventListener('input', () => {
+    grow(); count();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => store.set('moodpad.text', doc.value), 400);
+  });
+  $('title').addEventListener('input', () => { store.set('moodpad.title', $('title').value); });
+  window.addEventListener('resize', grow);
+  grow(); count();
+
+  // ---------- controls
+  $('mute').addEventListener('click', () => {
+    state.muted = !state.muted;
+    $('mute').setAttribute('aria-pressed', String(state.muted));
+    $('mute').textContent = state.muted ? 'Muted' : 'Mute';
+    store.set('moodpad.muted', state.muted ? '1' : '0');
+  });
+  $('volume').addEventListener('input', e => {
+    state.volume = parseFloat(e.target.value);
+    master.gain.value = state.volume;
+    store.set('moodpad.volume', String(state.volume));
+  });
+  $('sens').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    state.sensitivity = b.dataset.v;
+    engine.config = scaled(DEFAULT_CONFIG, state.sensitivity);
+    store.set('moodpad.sensitivity', state.sensitivity);
+    paintSensitivity();
+  });
+
+  // Custom packs: choose a folder containing cat/, owl/, … each with signature.wav + key_*.wav.
+  $('packBtn').addEventListener('click', () => $('packInput').click());
+  $('packInput').addEventListener('change', async e => {
+    await ready;
+    const byMood = {};
+    for (const file of e.target.files) {
+      const parts = file.webkitRelativePath.split('/');
+      const mood = parts.find(p => CHARACTERS[p]);
+      if (!mood || !/\.wav$/i.test(file.name)) continue;
+      (byMood[mood] = byMood[mood] || []).push(file);
+    }
+    const applied = [];
+    for (const mood of Object.keys(byMood)) {
+      const set = { keys: [] };
+      for (const file of byMood[mood].sort((a, b) => a.name.localeCompare(b.name))) {
+        const name = file.name.replace(/\.wav$/i, '');
+        let buf;
+        try { buf = await decode(await file.arrayBuffer()); } catch (err) { continue; }
+        if (name.startsWith('key_')) set.keys.push(buf);
+        else if (['signature', 'backspace', 'space', 'first'].includes(name)) set[name] = buf;
+      }
+      if (set.signature && set.keys.length) { sets[mood] = set; applied.push(mood); }
+    }
+    $('packNote').textContent = applied.length
+      ? 'Loaded: ' + applied.join(', ') + ' (this session only)'
+      : 'No valid packs found (need signature.wav and key_*.wav inside a folder named cat, owl, …)';
+    e.target.value = '';
+  });
+})();
+</script>
+</body>
+</html>
