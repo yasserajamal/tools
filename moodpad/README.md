@@ -13,7 +13,7 @@ Free writing, with feelings. A writing pad whose characters and sounds react to 
 | ![Angry goose](docs/screenshots/goose.png) | ![Distracted cat](docs/screenshots/cat.png) | ![Wise owl](docs/screenshots/owl.png) |
 | Backspacing wakes the goose | A burst after a pause: the cat | Thinking pauses: the owl |
 
-Six characters (plus a wizard, mouse and robot) take over based on backspaces, bursts, speed and rhythm. Thresholds live in [`mood-engine.js`](mood-engine.js).
+Six characters (goose, cat, owl, wizard, mouse and robot) take over based on backspaces, bursts, speed and rhythm. Thresholds live in [`mood-engine.js`](mood-engine.js).
 
 **Privacy:** only key timing and category are used, never the key itself ([where keys are read](index.html#L355)). No network requests; your text stays in your browser.
 
