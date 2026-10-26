@@ -4,7 +4,7 @@ Free writing, with feelings. A writing pad whose characters and sounds react to 
 
 ![MoodPad demo](docs/demo.gif)
 
-**Try it: [yasserjamal.com/moodpad](https://yasserjamal.com/moodpad)** (or open `index.html`; no install or server needed).
+**Try it: [yasserjamal.com/tools/moodpad](https://yasserjamal.com/tools/moodpad)** (or open `index.html`; no install or server needed).
 
 | | | |
 | --- | --- | --- |
