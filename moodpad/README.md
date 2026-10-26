@@ -2,7 +2,22 @@
 
 Free writing, with feelings. A distraction-free writing pad whose characters and sounds react to *how* you type, never *what* you type.
 
+![MoodPad demo: typing in different ways switches the character, page colour and sounds](docs/demo.gif)
+
+*Silent preview. [Watch the demo with sound](docs/demo.mp4).*
+
 **Try it: [yasserjamal.com/moodpad](https://yasserjamal.com/moodpad)**, or open `index.html` from a clone. There's no install, no build step and no server.
+
+## The cast in action
+
+| | | |
+| --- | --- | --- |
+| ![Angry goose](docs/screenshots/goose.png) | ![Distracted cat](docs/screenshots/cat.png) | ![Panicked mouse](docs/screenshots/mouse.png) |
+| **Angry goose**: backspacing or shouting | **Distracted cat**: a burst after a pause | **Panicked mouse**: very fast typing |
+| ![Sleepy wizard](docs/screenshots/wizard.png) | ![Robot](docs/screenshots/robot.png) | ![Wise owl](docs/screenshots/owl.png) |
+| **Sleepy wizard**: slow, unhurried | **Robot**: steady rhythm | **Wise owl**: pausing to think |
+
+The page before you start typing: [docs/screenshots/empty.png](docs/screenshots/empty.png).
 
 ## Characters
 
